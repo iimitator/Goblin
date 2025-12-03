@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goblin Mode: Greasy Goblin Avoid The Shower By IMITATOR</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Creepster&family=Roboto+Mono:wght@700&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            color: #00ff00;
+            font-family: 'Roboto Mono', monospace;
+            touch-action: none; /* Prevent scrolling on mobile */
+
+            /* NEW: center the game box */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #game-container {
+            position: relative;
+            /* OLD: fullscreen
+            width: 100vw;
+            height: 100vh;
+            */
+            /* NEW: phone-like box with 2:3 ratio */
+            aspect-ratio:  2.5 / 5;
+            max-height: 90vh;
+            width: auto;
+            max-width: 90vw;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle, #2a2a2a 0%, #000000 100%);
+            border: 4px solid #444;
+            box-shadow: 0 0 40px #00ff00;
+            overflow: hidden;
+        }
+
+        canvas {
+            box-shadow: 0 0 20px #00ff00;
+            cursor: none; /* Hide default cursor */
+            background-color: #111;
+            border: 4px solid #444;
+
+            /* NEW: make canvas fill the box */
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .hud-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .hud-text {
+            font-size: 24px;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        #start-screen, #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            pointer-events: auto;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            /* FIXED: removed extra "*/" so this rule actually works */
+            overflow-y: hidden; /* hide scrollbar */
+        }
+
+        h1 {
+            font-family: 'Creepster', cursive;
+            font-size: 80px;
+            margin: 0;
+            color: #00ff00;
+            text-shadow: 4px 4px 0 #550055;
+            animation: wobble 2s infinite;
+        }
+
+        h2 {
+            color: #ff0055;
+            font-size: 40px;
+        }
+
+        p {
+            max-width: 600px;
+            font-size: 18px;
+            line-height: 1.5;
+            color: #ddd;
+        }
+
+        button {
+            margin-top: 30px;
+            padding: 15px 40px;
+            font-size: 24px;
+            font-family: 'Creepster', cursive;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            cursor: pointer;
+            transform: rotate(-2deg);
+            transition: transform 0.2s, background 0.2s;
+            box-shadow: 5px 5px 0 #550055;
+        }
+
+        button:hover {
+            transform: rotate(2deg) scale(1.1);
+            background: #fff;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Animations */
+        @keyframes wobble {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(-3deg); }
+            50% { transform: rotate(3deg); }
+            75% { transform: rotate(-1deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        #flash-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .wiggle-text {
+            display: inline-block;
+            animation: shake 0.5s infinite;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        /* Mobile / small-screen tweaks for better fit */
+        @media (max-width: 768px), (max-height: 700px) {
+            h1 {
+                font-size: 52px;
+            }
+            h2 {
+                font-size: 28px;
+            }
+            p {
+                font-size: 16px;
+            }
+            button {
+                font-size: 20px;
+                padding: 12px 28px;
+            }
+            .hud-text {
+                font-size: 18px;
+            }
+        }
+
+        /* EXTRA: make sure overlays always fit on short screens */
+        @media (max-height: 700px) {
+            #start-screen h1,
+            #game-over-screen h1 {
+                font-size: 52px;
+            }
+
+            #start-screen p,
+            #game-over-screen p {
+                font-size: 16px;
+            }
+
+            #start-screen button,
+            #game-over-screen button {
+                font-size: 20px;
+                padding: 12px 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="flash-overlay"></div>
+
+    <div id="ui-layer">
+        <div class="hud-row">
+            <div class="hud-text">Trash Eaten: <span id="score">0</span></div>
+            <div class="hud-text">High Score: <span id="hud-high-score">0</span></div>
+            <div class="hud-text">Lives: <span id="lives">3</span></div>
+        </div>
+        <div class="hud-text" style="color: #ff0055;">Productivity: <span id="danger-level">0%</span></div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <h1>GOBLIN MODE</h1>
+    
+        <p><strong>Instructions:</strong><br>
+        Move your mouse (or drag finger) to slither.<br>
+        Collect TRASH (junk food and clutter).<br>
+        Avoid RESPONSIBILITIES (showers, salads, emails, ties, alarms...)</p>
+        <button id="start-btn">BECOME UNGOVERNABLE</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="hidden">
+        
+        <h2 id="death-reason">Cause of death: Hygiene</h2>
+        <p>You accidentally became a productive member of society.<br>Disgusting.</p>
+        <p>Final Trash Count: <span id="final-score">0</span></p>
+        <p>High Score: <span id="high-score">0</span></p>
+        <button id="restart-btn">RELAPSE INTO CHAOS</button>
+    </div>
+</div>
+
+<script>
+    // --- Audio System (defensive, won't break game if blocked) ---
+    let audioCtx = null;
+
+    function getAudioCtx() {
+        if (audioCtx) return audioCtx;
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        try {
+            audioCtx = new AC();
+            return audioCtx;
+        } catch (e) {
+            audioCtx = null;
+            return null;
+        }
+    }
+
+    function playSound(type) {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+
+        if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+        }
+
+        const osc = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        if (type === 'eat') {
+            // Satisfying "bloop"
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(400, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.1);
+            gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.1);
+        } else if (type === 'hit') {
+            // Horrible dissonant screech
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, ctx.currentTime);
+            osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.3);
+            gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.3);
+        } else if (type === 'spawn') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800, ctx.currentTime);
+            gainNode.gain.setValueAtTime(0.02, ctx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.05);
+        }
+    }
+
+    // --- Game Setup ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const dangerEl = document.getElementById('danger-level');
+    const finalScoreEl = document.getElementById('final-score');
+    const startScreen = document.getElementById('start-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const deathReasonEl = document.getElementById('death-reason');
+    const flashOverlay = document.getElementById('flash-overlay');
+    const hudHighScoreEl = document.getElementById('hud-high-score');
+    const highScoreEl = document.getElementById('high-score');
+    const livesEl = document.getElementById('lives');
+
+    /* NEW: reference to container */
+    const gameContainer = document.getElementById('game-container');
+
+    let animationId;
+    let score = 0;
+    let frames = 0;
+    let gameActive = false;
+
+    // lives & invincibility
+    const MAX_LIVES = 3;
+    const INVINCIBILITY_FRAMES = 90; // ~1.5s at 60fps
+    let lives = MAX_LIVES;
+    let invincibilityFrames = 0;
+
+    // greasy power-up
+    const GREASE_EMOJI = '\uD83D\uDD25'; // fire as "grease nuke"
+
+    // clutter-aware, shorter cooldown
+    const GREASE_MIN_FRAMES = 600;  // 10s
+    const GREASE_MAX_FRAMES = 900;  // 15s
+    const GREASE_CLUTTER_THRESHOLD = 20; // items on screen
+    let framesSinceGrease = 0;
+    let greaseCooldownFrames = GREASE_MIN_FRAMES;
+
+    // High score (localStorage)
+    const HIGH_SCORE_KEY = 'goblinModeHighScore';
+    let highScore = 0;
+
+    (function initHighScore() {
+        try {
+            const stored = localStorage.getItem(HIGH_SCORE_KEY);
+            if (stored !== null) {
+                highScore = parseInt(stored, 10) || 0;
+            }
+        } catch (e) {
+            highScore = 0;
+        }
+        if (hudHighScoreEl) hudHighScoreEl.innerText = highScore;
+        if (highScoreEl) highScoreEl.innerText = highScore;
+    })();
+
+    // screen-size scaling for enemies
+    let enemySpeedScale = 1;
+
+    // Responsive Canvas
+    function resize() {
+        /* NEW: size canvas to the game container, not the whole window */
+        const rect = gameContainer.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        const baseDim = Math.min(canvas.width, canvas.height);
+        const reference = 800; // reference smaller side
+        let factor = baseDim / reference;
+        if (factor > 1) factor = 1;     // big screens = 1
+        if (factor < 0.4) factor = 0.4; // don't make them too slow
+        enemySpeedScale = factor;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // --- Assets (Emojis via ES5-safe Unicode escapes) ---
+    const GOODIES = [
+        '\uD83C\uDF55', // pizza
+        '\uD83C\uDF54', // burger
+        '\uD83C\uDF5F', // fries
+        '\uD83C\uDF69', // donut
+        '\uD83C\uDF6A', // cookie
+        '\uD83C\uDF57', // chicken
+        '\uD83E\uDD64', // drink
+        '\uD83E\uDDE6'  // sock
+    ];
+
+    const BADDIES = [
+        '\uD83E\uDD57', // salad
+        '\uD83D\uDEBF', // shower
+        '\uD83D\uDCE7', // email
+        '\uD83D\uDC54', // tie
+        '\u23F0',       // alarm clock
+        '\uD83E\uDD66', // broccoli
+        '\uD83C\uDF1E', // sun
+        '\uD83E\uDD55'  // carrot
+    ];
+    
+    // Funny death messages based on what killed you
+    const DEATH_MESSAGES = {
+        '\uD83E\uDD57': "Death by fiber overdose.",
+        '\uD83D\uDEBF': "You washed away your protective grime layer.",
+        '\uD83D\uDCE7': "You opened an email titled 'Urgent'.",
+        '\uD83D\uDC54': "You accidentally started a 401k.",
+        '\u23F0':       "You woke up before noon.",
+        '\uD83E\uDD66': "Vitamins destroyed your immune system.",
+        '\uD83C\uDF1E': "Natural light burned your retina.",
+        '\uD83E\uDD55': "Your vision improved, and you saw your life choices."
+    };
+
+    // --- Input Handling ---
+    const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+    
+    window.addEventListener('mousemove', (e) => {
+        /* NEW: convert to canvas-local coordinates */
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
+    });
+
+    window.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = e.touches[0].clientX - rect.left;
+        mouse.y = e.touches[0].clientY - rect.top;
+    }, { passive: false });
+
+    // --- Game Objects ---
+    class Goblin {
+        constructor() {
+            this.x = canvas.width / 2;
+            this.y = canvas.height / 2;
+            this.radius = 30;
+            this.angle = 0;
+            this.velocity = { x: 0, y: 0 };
+            this.friction = 0.94; // Very slippery
+            this.speed = 1.5;
+            this.face = '\uD83D\uDC7A'; // goblin face
+        }
+
+        update() {
+            const dx = mouse.x - this.x;
+            const dy = mouse.y - this.y;
+            
+            // Accelerate towards mouse
+            this.velocity.x += dx * 0.005;
+            this.velocity.y += dy * 0.005;
+
+            // Apply Friction
+            this.velocity.x *= this.friction;
+            this.velocity.y *= this.friction;
+
+            // Update Position
+            this.x += this.velocity.x;
+            this.y += this.velocity.y;
+
+            // Bounce off walls
+            if (this.x < 0 || this.x > canvas.width) {
+                this.velocity.x = -this.velocity.x;
+                this.x = Math.max(0, Math.min(canvas.width, this.x));
+            }
+            if (this.y < 0 || this.y > canvas.height) {
+                this.velocity.y = -this.velocity.y;
+                this.y = Math.max(0, Math.min(canvas.height, this.y));
+            }
+
+            // Rotate based on velocity
+            this.angle = Math.atan2(this.velocity.y, this.velocity.x);
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            // Wiggle effect based on speed
+            const wiggle = Math.sin(frames * 0.2) * (Math.abs(this.velocity.x) + Math.abs(this.velocity.y)) * 0.1;
+            ctx.rotate(this.angle + (Math.PI / 2) + wiggle); // Orient face
+
+            // Flicker while invincible
+            if (invincibilityFrames > 0 && (Math.floor(frames / 5) % 2 === 0)) {
+                ctx.globalAlpha = 0.4;
+            } else {
+                ctx.globalAlpha = 1;
+            }
+
+            ctx.font = '50px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(this.face, 0, 0);
+            
+            // Draw "Stink Lines"
+            if (frames % 10 === 0) {
+                particles.push(new Particle(this.x, this.y, '#556b2f', 2));
+            }
+            ctx.restore();
+        }
+    }
+
+    class Item {
+        constructor(isEnemy, isGrease = false) {
+            this.radius = 20;
+
+            // Spawn outside canvas
+            if (Math.random() < 0.5) {
+                this.x = Math.random() < 0.5 ? -30 : canvas.width + 30;
+                this.y = Math.random() * canvas.height;
+            } else {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() < 0.5 ? -30 : canvas.height + 30;
+            }
+            
+            this.isEnemy = isEnemy;
+            this.isGrease = isGrease;
+
+            if (this.isGrease) {
+                this.isEnemy = false;
+                this.emoji = GREASE_EMOJI;
+            } else {
+                this.emoji = isEnemy
+                    ? BADDIES[Math.floor(Math.random() * BADDIES.length)]
+                    : GOODIES[Math.floor(Math.random() * GOODIES.length)];
+            }
+            
+            // Enemies track player slightly, food drifts randomly
+            this.angle = Math.atan2(player ? player.y - this.y : 0, player ? player.x - this.x : 0);
+            this.velocity = {
+                x: Math.cos(this.angle) * (Math.random() * 2 + 1),
+                y: Math.sin(this.angle) * (Math.random() * 2 + 1)
+            };
+            
+            // Rotation for visual flair
+            this.rotation = 0;
+            this.rotationSpeed = (Math.random() - 0.5) * 0.1;
+        }
+
+        update() {
+            if (this.isEnemy) {
+                // Enemies slowly adjust course to player (heat-seeking responsibilities)
+                const targetAngle = Math.atan2(player.y - this.y, player.x - this.x);
+                this.velocity.x += Math.cos(targetAngle) * 0.015;
+                this.velocity.y += Math.sin(targetAngle) * 0.015;
+                
+                // Difficulty scaling: starts slow, ramps with time + score
+                const baseSpeed = 0.6; // nice & chill at the start
+                const timeFactor = 1 + Math.min(frames / (60 * 30), 1.5); // ramps over ~30s
+                const scoreFactor = 1 + score * 0.02; // small boost per trash
+                let maxSpeed = baseSpeed * timeFactor * scoreFactor;
+
+                // screen-size scaling
+                maxSpeed *= enemySpeedScale;
+
+                const mag = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
+                if (mag > maxSpeed) {
+                    this.velocity.x = (this.velocity.x / mag) * maxSpeed;
+                    this.velocity.y = (this.velocity.y / mag) * maxSpeed;
+                }
+            } else {
+                // Goodies & grease drift
+                this.velocity.x *= 0.99;
+                this.velocity.y *= 0.99;
+            }
+
+            this.x += this.velocity.x;
+            this.y += this.velocity.y;
+            this.rotation += this.rotationSpeed;
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.rotation);
+            ctx.font = this.isGrease ? '36px Arial' : '30px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(this.emoji, 0, 0);
+            ctx.restore();
+        }
+    }
+
+    class Particle {
+        constructor(x, y, color, speedMulti) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.velocity = {
+                x: (Math.random() - 0.5) * 5 * speedMulti,
+                y: (Math.random() - 0.5) * 5 * speedMulti
+            };
+            this.alpha = 1;
+            this.radius = Math.random() * 5 + 2;
+        }
+
+        update() {
+            this.x += this.velocity.x;
+            this.y += this.velocity.y;
+            this.alpha -= 0.02;
+        }
+
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.alpha;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    class TextFloater {
+        constructor(x, y, text) {
+            this.x = x;
+            this.y = y;
+            this.text = text;
+            this.alpha = 1;
+            this.velocity = -2;
+        }
+        update() {
+            this.y += this.velocity;
+            this.alpha -= 0.02;
+        }
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.alpha;
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 20px Arial';
+            ctx.fillText(this.text, this.x, this.y);
+            ctx.restore();
+        }
+    }
+
+    // --- Game Logic ---
+    let player;
+    let items = [];
+    let particles = [];
+    let floaters = [];
+    let spawnRate = 60;
+
+    function resetLives() {
+        lives = MAX_LIVES;
+        invincibilityFrames = 0;
+        if (livesEl) livesEl.innerText = lives;
+    }
+
+    function resetGreaseTimers() {
+        framesSinceGrease = 0;
+        // next cooldown between 10–15 seconds
+        greaseCooldownFrames = Math.floor(
+            GREASE_MIN_FRAMES + Math.random() * (GREASE_MAX_FRAMES - GREASE_MIN_FRAMES)
+        );
+    }
+
+    function init() {
+        player = new Goblin();
+        items = [];
+        particles = [];
+        floaters = [];
+        score = 0;
+        frames = 0;
+        spawnRate = 100;
+        scoreEl.innerText = score;
+        dangerEl.innerText = "0%";
+        resetLives();
+        resetGreaseTimers();
+        gameActive = true;
+        resize(); // ensure canvas matches box at start
+        animate();
+    }
+
+    function spawnItem() {
+        // Spawn more enemies as score goes up
+        const enemyChance = Math.min(0.2 + (score * 0.02), 0.2);
+        const isEnemy = Math.random() < enemyChance;
+        items.push(new Item(isEnemy));
+        if (!isEnemy && Math.random() > 0.2) {
+            // Sometimes spawn two items
+            items.push(new Item(false));
+        }
+
+        // Greasy power-up: clutter-aware + max cooldown
+        const hasGrease = items.some(i => i.isGrease);
+        const cluttered = items.length >= GREASE_CLUTTER_THRESHOLD;
+
+        if (
+            !hasGrease &&
+            framesSinceGrease >= greaseCooldownFrames &&
+            (cluttered || framesSinceGrease >= GREASE_MAX_FRAMES)
+        ) {
+            items.push(new Item(false, true)); // greasy non-enemy
+            resetGreaseTimers();
+        }
+    }
+
+    function checkCollisions() {
+        for (let i = items.length - 1; i >= 0; i--) {
+            const item = items[i];
+            const dist = Math.hypot(player.x - item.x, player.y - item.y);
+
+            // Cleanup off-screen items that are too far
+            if (item.x < -100 || item.x > canvas.width + 100 ||
+                item.y < -100 || item.y > canvas.height + 100) {
+                items.splice(i, 1);
+                continue;
+            }
+
+            // Collision
+            if (dist - item.radius - player.radius < 0) {
+                if (item.isEnemy) {
+                    if (invincibilityFrames > 0) {
+                        // still invincible, ignore this hit
+                        continue;
+                    }
+
+                    // lose a life
+                    lives--;
+                    if (livesEl) livesEl.innerText = lives;
+
+                    // hit feedback
+                    playSound('hit');
+                    for (let j = 0; j < 8; j++) {
+                        particles.push(new Particle(item.x, item.y, '#ff0055', 1.5));
+                    }
+                    floaters.push(new TextFloater(item.x, item.y, "OUCH"));
+
+                    // remove this enemy
+                    items.splice(i, 1);
+
+                    if (lives <= 0) {
+                        // final death
+                        endGame(item.emoji);
+                        return;
+                    } else {
+                        // temporary invincibility
+                        invincibilityFrames = INVINCIBILITY_FRAMES;
+                    }
+                } else if (item.isGrease) {
+                    // Greasy nuke: clear EVERYTHING (enemies + trash)
+                    playSound('eat');
+
+                    // Big explosion at grease location
+                    for (let k = 0; k < 25; k++) {
+                        particles.push(new Particle(item.x, item.y, '#ffcc00', 2));
+                    }
+                    floaters.push(new TextFloater(item.x, item.y, "SO GREASY"));
+
+                    // small score bonus
+                    score += 3;
+                    scoreEl.innerText = score;
+
+                    // Clear all items from screen
+                    items = [];
+                    resetGreaseTimers();
+
+                    return; // we're done processing collisions this frame
+                } else {
+                    // normal trash
+                    playSound('eat');
+                    score++;
+                    scoreEl.innerText = score;
+                    // Create particles
+                    for (let j = 0; j < 5; j++) {
+                        particles.push(new Particle(item.x, item.y, '#ffcc00', 1));
+                    }
+                    // Funny text
+                    const words = ["YUM", "TRASH!", "CRUNCH", "SLURP", "MOIST"];
+                    floaters.push(new TextFloater(item.x, item.y, words[Math.floor(Math.random() * words.length)]));
+                    // Remove item
+                    items.splice(i, 1);
+                }
+            }
+        }
+    }
+
+    function endGame(killerEmoji) {
+        gameActive = false;
+        cancelAnimationFrame(animationId);
+        finalScoreEl.innerText = score;
+        
+        // High score update
+        if (score > highScore) {
+            highScore = score;
+            try {
+                localStorage.setItem(HIGH_SCORE_KEY, String(highScore));
+            } catch (e) {}
+        }
+        if (hudHighScoreEl) hudHighScoreEl.innerText = highScore;
+        if (highScoreEl) highScoreEl.innerText = highScore;
+
+        // Determine cause of death text
+        const reason = DEATH_MESSAGES[killerEmoji] || "You became respectable.";
+        deathReasonEl.innerText = reason + " (" + killerEmoji + ")";
+        
+        gameOverScreen.classList.remove('hidden');
+        
+        // Flash screen
+        flashOverlay.style.opacity = 0.8;
+        setTimeout(() => { flashOverlay.style.opacity = 0; }, 200);
+    }
+
+    function animate() {
+        if (!gameActive) return;
+        animationId = requestAnimationFrame(animate);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        frames++;
+        framesSinceGrease++;
+
+        if (invincibilityFrames > 0) {
+            invincibilityFrames--;
+        }
+
+        // Spawn logic
+        if (frames % spawnRate === 0) {
+            spawnItem();
+            playSound('spawn');
+            if (spawnRate > 10) spawnRate--; // Get harder faster
+        }
+
+        // Draw Player
+        player.update();
+        player.draw();
+
+        // Items
+        items.forEach(item => {
+            item.update();
+            item.draw();
+        });
+
+        // Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            if (p.alpha <= 0) {
+                particles.splice(i, 1);
+            } else {
+                p.update();
+                p.draw();
+            }
+        }
+
+        // Floating Text
+        for (let i = floaters.length - 1; i >= 0; i--) {
+            const f = floaters[i];
+            if (f.alpha <= 0) {
+                floaters.splice(i, 1);
+            } else {
+                f.update();
+                f.draw();
+            }
+        }
+
+        checkCollisions();
+
+        // Update Danger Level UI based on number of enemies on screen
+        const enemies = items.filter(i => i.isEnemy).length;
+        dangerEl.innerText = (enemies * 05) + "%";
+        dangerEl.style.fontSize = (05 + enemies) + "px";
+    }
+
+    // --- Buttons ---
+    document.getElementById('start-btn').addEventListener('click', () => {
+        startScreen.classList.add('hidden');
+        init();
+        const ctxAudio = getAudioCtx();
+        if (ctxAudio && ctxAudio.state === 'suspended') {
+            ctxAudio.resume().catch(() => {});
+        }
+    });
+
+    document.getElementById('restart-btn').addEventListener('click', () => {
+        gameOverScreen.classList.add('hidden');
+        init();
+    });
+</script>
+</body>
+</html>
